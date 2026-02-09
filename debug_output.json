@@ -1,0 +1,18 @@
+{
+  "message": "Admin setup complete. Templates seeded.",
+  "credentials": {
+    "email": "admin@bofu.com",
+    "password": "admin"
+  },
+  "funnels": [
+    {
+      "id": "38e412e9-dae6-48ff-916a-28c2e49dfb42",
+      "name": "appt",
+      "slug": "coral new home -appt",
+      "is_published": true,
+      "client": {
+        "slug": "coral new home "
+      }
+    }
+  ]
+}

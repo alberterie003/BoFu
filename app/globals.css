@@ -1,0 +1,158 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-playfair);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--card);
+  --color-popover-foreground: var(--card-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius: var(--radius);
+
+  --animate-fade-in: fade-in 0.5s ease-out;
+  --animate-slide-up: slide-up 0.5s ease-out;
+}
+
+:root {
+  /* UP Marketing Brand Palette 🏆 */
+
+  /* Background: Very light warm grey/white to let Gold pop */
+  --background: #F9FAFB;
+  /* Gray-50 */
+  --foreground: #0F172A;
+  /* Slate-900 */
+
+  /* Surface: Pure White */
+  --card: #FFFFFF;
+  --card-foreground: #0F172A;
+
+  /* Primary: THE Brand Navy (Deep, Executive) */
+  --primary: #0B1120;
+  /* Very dark navy, almost black */
+  --primary-foreground: #FFFFFF;
+
+  /* Secondary: THE Brand Gold (Luxury) */
+  --secondary: #C5A059;
+  /* Metallic Gold from Logo */
+  --secondary-foreground: #0B1120;
+  /* Navy text on Gold */
+
+  /* Accent: Gold Highlight */
+  --accent: #D4AF37;
+  /* Brighter Gold */
+  --accent-foreground: #FFFFFF;
+
+  /* Muted: Subtle Cool Grays */
+  --muted: #F1F5F9;
+  /* Slate-100 */
+  --muted-foreground: #64748B;
+  /* Slate-500 */
+
+  /* Functional */
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+
+  --border: #E2E8F0;
+  /* Slate-200 */
+  --input: #E2E8F0;
+  --ring: #C5A059;
+  /* Gold focus ring */
+
+  --radius: 0.75rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground tracking-tight antialiased;
+    /* Brand Gradient: Navy deep background hint */
+    background-image:
+      radial-gradient(at 0% 0%, rgba(197, 160, 89, 0.05) 0px, transparent 50%),
+      /* Gold hint top-left */
+      radial-gradient(at 100% 100%, rgba(11, 17, 32, 0.03) 0px, transparent 50%);
+    /* Navy hint bottom-right */
+    background-attachment: fixed;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-serif tracking-tight text-primary;
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    @apply bg-white/80 backdrop-blur-md border border-slate-200/60 shadow-xl;
+  }
+
+  .glass-card {
+    @apply bg-white/60 backdrop-blur-sm border border-slate-200/50 shadow-sm transition-all duration-300 hover:shadow-md hover:border-secondary/40 hover:-translate-y-0.5;
+  }
+
+  .text-gradient {
+    /* Gold Gradient Text */
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-[#C5A059] via-[#D4AF37] to-[#B08D46];
+  }
+
+  .luxury-border {
+    @apply border-b border-secondary/20;
+  }
+
+  .brand-gradient {
+    @apply bg-gradient-to-br from-primary to-[#182338];
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
