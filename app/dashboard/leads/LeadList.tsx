@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Phone, MessageCircle, Flame, Snowflake, ThermometerSun, X, Calendar, DollarSign, Clock, MapPin, FileText, CheckCircle2, Trash2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { markLeadAsViewed, deleteLead } from './actions'
+import { markLeadAsViewed, deleteLead, assessLead } from './actions'
 
 interface Lead {
     id: string
@@ -11,6 +11,8 @@ interface Lead {
     status: string
     temperature?: string
     contact_data: any
+    qualification_label?: string
+    is_noise?: boolean
     funnel?: {
         name: string
         client?: {
@@ -168,6 +170,7 @@ export default function LeadList({ leads: initialLeads, showClientColumn = true 
                                 const isNew = lead.status === 'new'
                                 const source = contact.utm_source || 'Direct'
                                 const campaign = contact.utm_campaign
+                                const isOverdue = isNew && (new Date().getTime() - new Date(lead.created_at).getTime() > 5 * 60 * 1000)
 
                                 return (
                                     <tr
@@ -216,6 +219,46 @@ export default function LeadList({ leads: initialLeads, showClientColumn = true 
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
+                                                {/* SLA Timer / Status */}
+                                                {isOverdue && (
+                                                    <div className="mr-2 px-2 py-0.5 rounded text-[10px] font-bold border flex items-center gap-1 bg-red-100 text-red-700 border-red-200 animate-pulse">
+                                                        <Clock size={10} />
+                                                        OVERDUE
+                                                    </div>
+                                                )}
+
+                                                {/* Qualification Actions */}
+                                                {!lead.qualification_label && (
+                                                    <>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                assessLead(lead.id, 'qualified');
+                                                            }}
+                                                            className="p-1.5 bg-green-100 text-green-700 rounded-md hover:bg-green-200 border border-green-200 transition-colors"
+                                                            title="Mark as Qualified (Triggers CAPI)"
+                                                        >
+                                                            <CheckCircle2 size={14} />
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                assessLead(lead.id, 'noise', 'manual');
+                                                            }}
+                                                            className="p-1.5 bg-red-100 text-red-700 rounded-md hover:bg-red-200 border border-red-200 transition-colors"
+                                                            title="Mark as Noise"
+                                                        >
+                                                            <X size={14} />
+                                                        </button>
+                                                    </>
+                                                )}
+
+                                                {lead.qualification_label === 'qualified' && (
+                                                    <span className="text-xs font-bold text-green-600 border border-green-200 bg-green-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                        <CheckCircle2 size={10} /> Qualified
+                                                    </span>
+                                                )}
+
                                                 {phone && (
                                                     <>
                                                         <a

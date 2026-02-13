@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, ExternalLink, Copy, Loader2, Pencil, Trash2 } from 'lucide-react'
+import { Plus, ExternalLink, Copy, Loader2, Pencil, Trash2, Home, Building2, TrendingUp, Key, ArrowRight } from 'lucide-react'
 import { getTemplateId } from './actions'
 
 // Basic Type - ideally import from types
@@ -31,9 +31,10 @@ export default function FunnelList({
     const [loading, setLoading] = useState(false)
 
     // Form State
-    const [formData, setFormData] = useState({ name: '', slug: '', clientId: clients[0]?.id || '' })
+    const [formData, setFormData] = useState({ name: '', slug: '', clientId: clients[0]?.id || '', templateId: '' })
     const [editingId, setEditingId] = useState<string | null>(null)
     const [slugManuallyEdited, setSlugManuallyEdited] = useState(false)
+    const [showTemplateSelector, setShowTemplateSelector] = useState(true)
 
     const supabase = createClient()
 
@@ -66,25 +67,32 @@ export default function FunnelList({
         setFormData({
             name: funnel.name,
             slug: funnel.slug,
-            clientId: funnel.client.id
+            clientId: funnel.client.id,
+            templateId: funnel.template_id || ''
         })
         setIsFormOpen(true)
         setSlugManuallyEdited(true)
     }
 
     const resetForm = () => {
-        setFormData({ name: '', slug: '', clientId: clients[0]?.id || '' })
+        setFormData({ name: '', slug: '', clientId: clients[0]?.id || '', templateId: '' })
         setEditingId(null)
         setIsFormOpen(false)
         setSlugManuallyEdited(false)
+        setShowTemplateSelector(true)
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
 
-        // Check template via Server Action (bypassing RLS)
-        const templateId = await getTemplateId('buy_home_miami_v1')
+        // Use selected template or default
+        let templateId = formData.templateId
+
+        if (!templateId) {
+            // Fallback to default template
+            templateId = await getTemplateId('buyer')
+        }
 
         if (!templateId) {
             alert("Template missing. Please run seed.")
@@ -119,7 +127,7 @@ export default function FunnelList({
                 // Ideally fetch full object back.
                 const { data: updatedFunnel } = await supabase
                     .from('funnels')
-                    .select('*, client:clients(id, slug), template:templates(id, name)')
+                    .select('*, client:clients(id, slug), template:funnel_templates(id, name)')
                     .eq('id', editingId)
                     .single()
 
@@ -140,7 +148,7 @@ export default function FunnelList({
                     config: {}, // Default
                     is_published: true // Default to live for MVP
                 })
-                .select('*, client:clients(id, slug), template:templates(id, name)')
+                .select('*, client:clients(id, slug), template:funnel_templates(id, name)')
                 .single()
 
             if (error) {
@@ -203,74 +211,188 @@ export default function FunnelList({
             {/* CREATE/EDIT FORM */}
             {isFormOpen && (
                 <div className="mb-8 p-6 bg-card border border-border rounded-xl animate-in slide-in-from-top-4 fade-in">
-                    <h3 className="text-lg font-semibold mb-4">{editingId ? 'Edit Funnel' : 'Create New Funnel'}</h3>
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="grid md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Funnel Name</label>
-                                <input
-                                    required
-                                    value={formData.name}
-                                    onChange={handleNameChange}
-                                    className="w-full px-3 py-2 border border-input rounded-lg bg-background outline-none focus:ring-2 focus:ring-ring"
-                                    placeholder="e.g. South Beach Luxury"
-                                />
+                    <h3 className="text-lg font-semibold mb-4">
+                        {editingId ? 'Edit Funnel' : showTemplateSelector ? 'Choose Funnel Type' : 'Create New Funnel'}
+                    </h3>
+
+                    {/* TEMPLATE SELECTOR - Only show for new funnels */}
+                    {!editingId && showTemplateSelector && (
+                        <div className="space-y-4">
+                            <p className="text-sm text-muted-foreground mb-6">
+                                Select a funnel type optimized for your use case. Each template includes pre-built qualification questions.
+                            </p>
+                            <div className="grid md:grid-cols-2 gap-4">
+                                {/* Buyer Template */}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setFormData(prev => ({ ...prev, templateId: templates.find(t => t.name.toLowerCase().includes('buyer'))?.id || '' }))
+                                        setShowTemplateSelector(false)
+                                    }}
+                                    className="group p-6 border-2 border-border rounded-lg hover:border-primary hover:bg-primary/5 transition-all text-left"
+                                >
+                                    <div className="flex items-start gap-4">
+                                        <div className="p-3 bg-blue-100 text-blue-600 rounded-lg group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                                            <Home size={24} />
+                                        </div>
+                                        <div className="flex-1">
+                                            <h4 className="font-semibold text-lg mb-1">🏡 Buyer Qualification</h4>
+                                            <p className="text-sm text-muted-foreground">
+                                                For home buyers. Qualifies timeline, budget, pre-approval status, and location preferences.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </button>
+
+                                {/* Seller Template */}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setFormData(prev => ({ ...prev, templateId: templates.find(t => t.name.toLowerCase().includes('seller'))?.id || '' }))
+                                        setShowTemplateSelector(false)
+                                    }}
+                                    className="group p-6 border-2 border-border rounded-lg hover:border-primary hover:bg-primary/5 transition-all text-left"
+                                >
+                                    <div className="flex items-start gap-4">
+                                        <div className="p-3 bg-green-100 text-green-600 rounded-lg group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                                            <Building2 size={24} />
+                                        </div>
+                                        <div className="flex-1">
+                                            <h4 className="font-semibold text-lg mb-1">🏘️ Seller Qualification</h4>
+                                            <p className="text-sm text-muted-foreground">
+                                                For home sellers. Checks ownership, timeline, urgency, and current agent status.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </button>
+
+                                {/* Investor Template */}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setFormData(prev => ({ ...prev, templateId: templates.find(t => t.name.toLowerCase().includes('investor'))?.id || '' }))
+                                        setShowTemplateSelector(false)
+                                    }}
+                                    className="group p-6 border-2 border-border rounded-lg hover:border-primary hover:bg-primary/5 transition-all text-left"
+                                >
+                                    <div className="flex items-start gap-4">
+                                        <div className="p-3 bg-purple-100 text-purple-600 rounded-lg group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                                            <TrendingUp size={24} />
+                                        </div>
+                                        <div className="flex-1">
+                                            <h4 className="font-semibold text-lg mb-1">💰 Investor Qualification</h4>
+                                            <p className="text-sm text-muted-foreground">
+                                                For real estate investors. Qualifies strategy, financing, experience, and ROI expectations.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </button>
+
+                                {/* Renter Template */}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setFormData(prev => ({ ...prev, templateId: templates.find(t => t.name.toLowerCase().includes('renter'))?.id || '' }))
+                                        setShowTemplateSelector(false)
+                                    }}
+                                    className="group p-6 border-2 border-border rounded-lg hover:border-primary hover:bg-primary/5 transition-all text-left"
+                                >
+                                    <div className="flex items-start gap-4">
+                                        <div className="p-3 bg-orange-100 text-orange-600 rounded-lg group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                                            <Key size={24} />
+                                        </div>
+                                        <div className="flex-1">
+                                            <h4 className="font-semibold text-lg mb-1">🔑 Renter Qualification</h4>
+                                            <p className="text-sm text-muted-foreground">
+                                                For renters. Screens move-in date, budget, credit, employment, and pets.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </button>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Slug (URL)</label>
-                                <input
-                                    value={formData.slug}
-                                    onChange={handleSlugChange}
-                                    className="w-full px-3 py-2 border border-input rounded-lg bg-background outline-none focus:ring-2 focus:ring-ring"
-                                    placeholder="south-beach-luxury"
-                                />
+
+                            <div className="flex justify-end pt-4">
+                                <button
+                                    type="button"
+                                    onClick={resetForm}
+                                    className="px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary rounded-lg"
+                                >
+                                    Cancel
+                                </button>
                             </div>
                         </div>
+                    )}
 
-                        {/* Client Select (if multiple) */}
-                        <div>
-                            <label className="block text-sm font-medium mb-1">Client</label>
-                            <select
-                                value={formData.clientId}
-                                onChange={e => {
-                                    const newClientId = e.target.value
-                                    setFormData(prev => {
-                                        const updates: any = { clientId: newClientId }
-                                        // Update slug if not manually edited
-                                        if (!slugManuallyEdited && !editingId) {
-                                            const client = clients.find(c => c.id === newClientId)
-                                            if (client && prev.name) {
-                                                const nameSlug = prev.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
-                                                updates.slug = `${client.slug}-${nameSlug}`
+                    {/* FUNNEL DETAILS FORM - Show after template selected or when editing */}
+                    {(editingId || !showTemplateSelector) && (
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div className="grid md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Funnel Name</label>
+                                    <input
+                                        required
+                                        value={formData.name}
+                                        onChange={handleNameChange}
+                                        className="w-full px-3 py-2 border border-input rounded-lg bg-background outline-none focus:ring-2 focus:ring-ring"
+                                        placeholder="e.g. South Beach Luxury"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Slug (URL)</label>
+                                    <input
+                                        value={formData.slug}
+                                        onChange={handleSlugChange}
+                                        className="w-full px-3 py-2 border border-input rounded-lg bg-background outline-none focus:ring-2 focus:ring-ring"
+                                        placeholder="south-beach-luxury"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Client Select (if multiple) */}
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Client</label>
+                                <select
+                                    value={formData.clientId}
+                                    onChange={e => {
+                                        const newClientId = e.target.value
+                                        setFormData(prev => {
+                                            const updates: any = { clientId: newClientId }
+                                            // Update slug if not manually edited
+                                            if (!slugManuallyEdited && !editingId) {
+                                                const client = clients.find(c => c.id === newClientId)
+                                                if (client && prev.name) {
+                                                    const nameSlug = prev.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+                                                    updates.slug = `${client.slug}-${nameSlug}`
+                                                }
                                             }
-                                        }
-                                        return { ...prev, ...updates }
-                                    })
-                                }}
-                                className="w-full px-3 py-2 border border-input rounded-lg bg-background outline-none focus:ring-2 focus:ring-ring"
-                            >
-                                {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                            </select>
-                        </div>
+                                            return { ...prev, ...updates }
+                                        })
+                                    }}
+                                    className="w-full px-3 py-2 border border-input rounded-lg bg-background outline-none focus:ring-2 focus:ring-ring"
+                                >
+                                    {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                </select>
+                            </div>
 
-                        <div className="flex gap-2 justify-end pt-2">
-                            <button
-                                type="button"
-                                onClick={resetForm}
-                                className="px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary rounded-lg"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 flex items-center gap-2"
-                            >
-                                {loading && <Loader2 className="animate-spin" size={14} />}
-                                {editingId ? 'Save Changes' : 'Create Funnel'}
-                            </button>
-                        </div>
-                    </form>
+                            <div className="flex gap-2 justify-end pt-2">
+                                <button
+                                    type="button"
+                                    onClick={resetForm}
+                                    className="px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary rounded-lg"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 flex items-center gap-2"
+                                >
+                                    {loading && <Loader2 className="animate-spin" size={14} />}
+                                    {editingId ? 'Save Changes' : 'Create Funnel'}
+                                </button>
+                            </div>
+                        </form>
+                    )}
                 </div>
             )}
 
@@ -342,6 +464,6 @@ export default function FunnelList({
                     ))}
                 </ul>
             </div>
-        </div>
+        </div >
     )
 }

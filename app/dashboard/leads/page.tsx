@@ -15,7 +15,7 @@ export default async function LeadsPage() {
 
     const accountIds = members?.map(m => m.account_id) || []
 
-    // 2. Use Admin Client to fetch leads + sessions (bypass RLS for join)
+    // 2. Use Admin Client to fetch leads + sessions + scores (bypass RLS for join)
     const { createAdminClient } = await import('@/lib/supabase/admin')
     const adminClient = createAdminClient() as any
 
@@ -31,7 +31,16 @@ export default async function LeadsPage() {
                     account_id
                 )
             ),
-            session:funnel_sessions(answers)
+            session:funnel_sessions(answers),
+            scores:lead_qualification_scores(
+                timeline_score,
+                financial_ready_score,
+                specificity_score,
+                engagement_score,
+                response_speed_score,
+                total_score,
+                quality_tier
+            )
         `)
         .in('funnel.client.account_id', accountIds)
         .order('created_at', { ascending: false })

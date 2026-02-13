@@ -68,8 +68,8 @@ export default async function FunnelPage({
       name,
       config,
       is_published,
-      template:templates (
-        spec
+      template:funnel_templates (
+        template_data
       )
     `)
         .eq('client_id', client.id)
@@ -109,7 +109,69 @@ export default async function FunnelPage({
         return notFound()
     }
 
-    const templateSpec = (funnel.template as any).spec || { steps: [] }
+    // Transform DB steps to FunnelClient expected format
+    const rawSteps = (funnel.template as any).template_data?.steps || []
+
+    // Helper to map question text to ID for scoring
+    const getStepId = (question: string, type: string) => {
+        const q = question.toLowerCase()
+        if (q.includes('budget')) return 'budget'
+        if (q.includes('move') || q.includes('time')) return 'timeline'
+        if (q.includes('mortgage') || q.includes('cash') || q.includes('financing')) return 'pre_approval'
+        if (q.includes('neighborhood') || q.includes('area')) return 'neighborhoods'
+        if (q.includes('bedroom')) return 'bedrooms'
+        return q.replace(/[^a-z0-9]+/g, '_').substring(0, 30)
+    }
+
+    const transformedSteps = rawSteps
+        .filter((s: any) => s.type !== 'email' && s.type !== 'phone') // Remove explicit contact steps, we'll add a group one
+        .map((s: any) => {
+            // Use explicit scoring component from DB if available, otherwise fallback to heuristics
+            const id = s.scoring_component || getStepId(s.question || '', s.type)
+
+            // Map types
+            if (s.type === 'multiple_choice') {
+                return {
+                    id,
+                    type: 'single_select',
+                    title: s.question,
+                    options: s.options
+                }
+            }
+            if (s.type === 'text') {
+                return {
+                    id,
+                    type: 'form',
+                    title: s.question,
+                    fields: [{ id: id, type: 'text', label: s.placeholder || 'Your answer', options: s.options }]
+                }
+            }
+            return {
+                id,
+                type: 'single_select', // Fallback
+                title: s.question,
+                options: []
+            }
+        })
+
+    // Add Contact Step
+    transformedSteps.push({
+        id: 'contact_info',
+        type: 'contact',
+        title: 'Where should we send the listings?',
+        fields: ['name', 'email', 'phone']
+    })
+
+    // Add Thank You Step
+    transformedSteps.push({
+        id: 'thank_you',
+        type: 'message',
+        title: 'Thank you!',
+        content: 'Your request has been received.',
+        whatsapp_enabled: true
+    })
+
+    const templateSpec = { steps: transformedSteps }
 
     return (
         <FunnelClient

@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import { rateLimit } from '@/lib/rate-limit'
+import { scoreAndSaveLead } from '@/lib/scoring/lead-scorer'
 
 export async function POST(
     request: Request,
@@ -38,20 +39,13 @@ export async function POST(
         return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }
 
-    // 2. Score Lead
-    let temperature = 'cold'
-    const answers = (session as any).answers || {}
-    const budget = answers['qualification']?.budget
-    if (budget === '$1M+' || budget === '$500k - $1M') temperature = 'warm'
-    const timeline = answers['qualification']?.timeline
-    if (timeline === 'ASAP') temperature = 'hot'
-    else if (timeline === '1-3 Months' && temperature !== 'hot') temperature = 'warm'
-
     // Extract tracking data
+    const answers = (session as any).answers || {}
     const trackingData = answers._tracking || {}
     const finalContactData = { ...contact, ...trackingData }
 
     // 3. Create Lead
+    // Initialize with 'new' and 'cold', scorer will update it
     const { data: lead, error: leadError } = await supabase
         .from('leads')
         .insert({
@@ -59,7 +53,7 @@ export async function POST(
             session_id: session.id,
             contact_data: finalContactData,
             status: 'new',
-            temperature: temperature
+            temperature: 'cold' // Default
         })
         .select()
         .single()
@@ -71,7 +65,15 @@ export async function POST(
     // 4. Mark session completed
     await supabase.from('funnel_sessions').update({ status: 'completed' }).eq('id', session.id)
 
-    // 5. Create Notification
+    // 5. Calculate Score (Async but awaited to ensure data consistency for instant feedback if needed)
+    try {
+        await scoreAndSaveLead(lead.id)
+    } catch (scoreError) {
+        console.error("Error scoring lead:", scoreError)
+        // Don't fail the request, just log it
+    }
+
+    // 6. Create Notification
     const { data: funnel } = await supabase.from('funnels').select('client_id').eq('id', funnelId).single()
     if (funnel) {
         const { data: client } = await supabase.from('clients').select('account_id').eq('id', funnel.client_id).single()

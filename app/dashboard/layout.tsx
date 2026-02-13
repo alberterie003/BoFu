@@ -3,17 +3,17 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Users, Funnel, FileText, Settings, LogOut, Menu, X } from 'lucide-react'
+import { LayoutDashboard, Users, Funnel, FileText, Settings, LogOut, Menu, X, BarChart3, Rocket } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { NotificationBell } from './components/NotificationBell'
 
 const navItems = [
     { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
-    { href: '/dashboard/clients', label: 'Clients', icon: Users }, // Agency only? Show for all MVP
-    { href: '/dashboard/funnels', label: 'Funnels', icon: Funnel }, // Custom Icon fail? Funnel is not in lucide? It is, but maybe filter. 'Filter' is better if not found. ArrowDownFromLine?
-    // Lucide 'Funnel' exists? 'Filter' usually. Let's use 'Filter' if unsure, or check import. 
-    // Actually Lucide has 'Filter'. We imported 'Funnel' let's see. 
+    { href: '/dashboard/campaigns', label: 'Campaigns', icon: BarChart3 },
+    { href: '/dashboard/tools/campaign-launcher', label: 'Ad Launcher', icon: Rocket },
+    { href: '/dashboard/clients', label: 'Clients', icon: Users },
+    { href: '/dashboard/funnels', label: 'Funnels', icon: Funnel },
     { href: '/dashboard/leads', label: 'Leads', icon: FileText },
     { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ]

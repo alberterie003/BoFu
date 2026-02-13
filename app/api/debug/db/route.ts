@@ -6,7 +6,7 @@ export async function GET() {
 
     const { data: clients, error: clientsError } = await supabase.from('clients').select('*')
     const { data: funnels, error: funnelsError } = await supabase.from('funnels').select('*')
-    const { data: templates, error: templatesError } = await supabase.from('templates').select('*')
+    const { data: templates, error: templatesError } = await supabase.from('funnel_templates').select('*')
 
     return NextResponse.json({
         clients,

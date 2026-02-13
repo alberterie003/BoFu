@@ -1,11 +1,17 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
-export async function GET() {
-    const supabase = createAdminClient() as any
+export async function GET(request: Request) {
+    const { searchParams } = new URL(request.url)
+    const secret = searchParams.get('secret')
 
+    if (process.env.NODE_ENV === 'production' && secret !== process.env.SETUP_SECRET) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const supabase = createAdminClient() as any
     const email = 'admin@bofu.com'
-    const password = 'admin' // Simple for MVP
+    const password = process.env.ADMIN_PASSWORD || 'admin' // Configurable password
 
     // Check if user exists
     const { data: users } = await supabase.auth.admin.listUsers()
@@ -54,52 +60,7 @@ export async function GET() {
         return NextResponse.json({ success: true, message: 'Admin account created', credentials: { email, password } })
     }
 
-    // Seed Templates
-    const { error: templateError } = await supabase.from('templates').upsert({
-        key: 'buy_home_miami_v1',
-        name: 'Buy a Home in Miami',
-        spec: {
-            "steps": [
-                {
-                    "id": "intent",
-                    "type": "single_select",
-                    "title": "What are you looking to do?",
-                    "options": [
-                        { "value": "buy", "label": "Buy a Home" },
-                        { "value": "rent", "label": "Rent a Home" },
-                        { "value": "luxury", "label": "Luxury Investment" }
-                    ]
-                },
-                {
-                    "id": "qualification",
-                    "type": "form",
-                    "title": "Tell us about your needs",
-                    "fields": [
-                        { "id": "budget", "type": "select", "label": "Budget Range", "options": ["$300k - $500k", "$500k - $1M", "$1M+"] },
-                        { "id": "area", "type": "text", "label": "Preferred Area (e.g. Brickell)" },
-                        { "id": "timeline", "type": "select", "label": "Timeline", "options": ["ASAP", "1-3 Months", "Just Looking"] }
-                    ]
-                },
-                {
-                    "id": "contact",
-                    "type": "contact",
-                    "title": "Where should we send the listings?",
-                    "fields": ["first_name", "email", "phone"]
-                },
-                {
-                    "id": "thank_you",
-                    "type": "message",
-                    "title": "Thank you!",
-                    "content": "A dedicated agent will contact you shortly.",
-                    "whatsapp_enabled": true
-                }
-            ]
-        }
-    }, { onConflict: 'key' })
-
-    if (templateError) {
-        console.error("Template Seed Error:", templateError)
-    }
+    // Template seeding removed. Use migration SQL.
 
     // Debug: Check funnels
     const { data: funnels } = await supabase.from('funnels').select('id, name, slug, is_published, client:clients(slug)')

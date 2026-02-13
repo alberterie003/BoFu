@@ -74,17 +74,15 @@ async function processFunnelMessage(
 
         console.log('Starting new funnel:', funnelId, 'for', cleanPhone)
 
-        // Get funnel details
-        const { data: funnel, error: funnelError } = await supabase
-            .from('funnels')
-            .select(`
-        *,
-        steps:funnel_steps(*)
-      `)
-            .eq('id', funnelId)
-            .single()
+        // Get funnel details via RPC (Bypasses table cache issues)
+        const { data: funnelJson, error: funnelError } = await supabase
+            .rpc('get_funnel_for_webhook', { p_funnel_id: funnelId })
+
+        const funnel = funnelJson as any
+
 
         if (funnelError || !funnel) {
+            console.error('Funnel Lookup Error:', funnelError)
             return 'Sorry, that funnel code is not valid. Please check and try again.'
         }
 

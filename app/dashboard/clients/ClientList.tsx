@@ -9,7 +9,8 @@ type Client = {
     id: string
     name: string
     slug: string
-    whatsapp_number?: string
+    twilio_phone_number?: string
+    client_whatsapp_number?: string
     created_at: string
 }
 
@@ -19,7 +20,7 @@ export default function ClientList({ initialClients, accountId }: { initialClien
     const [loading, setLoading] = useState(false)
 
     // Form and Edit State
-    const [formData, setFormData] = useState({ name: '', slug: '', whatsapp_number: '' })
+    const [formData, setFormData] = useState({ name: '', slug: '', twilio_number: '', client_number: '' })
     const [editingId, setEditingId] = useState<string | null>(null)
     const [slugManuallyEdited, setSlugManuallyEdited] = useState(false)
 
@@ -44,13 +45,18 @@ export default function ClientList({ initialClients, accountId }: { initialClien
 
     const startEditing = (client: Client) => {
         setEditingId(client.id)
-        setFormData({ name: client.name, slug: client.slug, whatsapp_number: client.whatsapp_number || '' })
+        setFormData({
+            name: client.name,
+            slug: client.slug,
+            twilio_number: client.twilio_phone_number || '',
+            client_number: client.client_whatsapp_number || ''
+        })
         setIsFormOpen(true)
-        setSlugManuallyEdited(true) // Don't auto-overwrite slug when editing existing
+        setSlugManuallyEdited(true)
     }
 
     const resetForm = () => {
-        setFormData({ name: '', slug: '', whatsapp_number: '' })
+        setFormData({ name: '', slug: '', twilio_number: '', client_number: '' })
         setEditingId(null)
         setIsFormOpen(false)
         setSlugManuallyEdited(false)
@@ -62,17 +68,24 @@ export default function ClientList({ initialClients, accountId }: { initialClien
 
         const finalSlug = formData.slug || formData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 
+        const updatePayload = {
+            name: formData.name,
+            slug: finalSlug,
+            twilio_phone_number: formData.twilio_number,
+            client_whatsapp_number: formData.client_number
+        }
+
         if (editingId) {
             // UPDATE
             const { error } = await supabase
                 .from('clients')
-                .update({ name: formData.name, slug: finalSlug, whatsapp_number: formData.whatsapp_number })
+                .update(updatePayload)
                 .eq('id', editingId)
 
             if (error) {
                 alert(error.message)
             } else {
-                setClients(clients.map(c => c.id === editingId ? { ...c, name: formData.name, slug: finalSlug, whatsapp_number: formData.whatsapp_number } : c))
+                setClients(clients.map(c => c.id === editingId ? { ...c, ...updatePayload, id: c.id, created_at: c.created_at } : c))
                 resetForm()
             }
         } else {
@@ -80,10 +93,8 @@ export default function ClientList({ initialClients, accountId }: { initialClien
             const { data, error } = await supabase
                 .from('clients')
                 .insert({
-                    name: formData.name,
-                    slug: finalSlug,
+                    ...updatePayload,
                     account_id: accountId,
-                    whatsapp_number: formData.whatsapp_number
                 })
                 .select()
                 .single()
@@ -153,17 +164,30 @@ export default function ClientList({ initialClients, accountId }: { initialClien
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-1">WhatsApp Number</label>
+                                <label className="block text-sm font-medium mb-1">Twilio Number (App)</label>
                                 <div className="relative">
                                     <Smartphone className="absolute left-3 top-2.5 text-muted-foreground" size={16} />
                                     <input
-                                        value={formData.whatsapp_number}
-                                        onChange={(e) => setFormData({ ...formData, whatsapp_number: e.target.value })}
+                                        value={formData.twilio_number}
+                                        onChange={(e) => setFormData({ ...formData, twilio_number: e.target.value })}
                                         className="w-full pl-9 pr-3 py-2 border border-input rounded-lg bg-background outline-none focus:ring-2 focus:ring-ring"
-                                        placeholder="e.g. 13055550123"
+                                        placeholder="+1..."
                                     />
                                 </div>
-                                <p className="text-xs text-muted-foreground mt-1">Include country code, no spaces or + (e.g. 1305...)</p>
+                                <p className="text-xs text-muted-foreground mt-1">Number purchased in Twilio.</p>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Client WhatsApp (Destination)</label>
+                                <div className="relative">
+                                    <Users className="absolute left-3 top-2.5 text-muted-foreground" size={16} />
+                                    <input
+                                        value={formData.client_number}
+                                        onChange={(e) => setFormData({ ...formData, client_number: e.target.value })}
+                                        className="w-full pl-9 pr-3 py-2 border border-input rounded-lg bg-background outline-none focus:ring-2 focus:ring-ring"
+                                        placeholder="+1..."
+                                    />
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">Where leads are forwarded to.</p>
                             </div>
                         </div>
                         <div className="flex gap-2 justify-end pt-2">
@@ -215,14 +239,23 @@ export default function ClientList({ initialClients, accountId }: { initialClien
                                     </td>
                                     <td className="px-6 py-4 font-mono text-muted-foreground">{client.slug}</td>
                                     <td className="px-6 py-4 text-muted-foreground">
-                                        {client.whatsapp_number ? (
-                                            <span className="flex items-center gap-1 text-green-600 bg-green-50 px-2 py-0.5 rounded text-xs w-fit">
-                                                <Smartphone size={12} />
-                                                {client.whatsapp_number}
-                                            </span>
-                                        ) : (
-                                            <span className="text-muted-foreground/50 italic">None</span>
-                                        )}
+                                        <div className="flex flex-col gap-1">
+                                            {client.twilio_phone_number && (
+                                                <span className="flex items-center gap-1 text-xs">
+                                                    <Smartphone size={12} className="text-blue-500" />
+                                                    {client.twilio_phone_number} (App)
+                                                </span>
+                                            )}
+                                            {client.client_whatsapp_number && (
+                                                <span className="flex items-center gap-1 text-xs">
+                                                    <Users size={12} className="text-green-500" />
+                                                    {client.client_whatsapp_number} (Client)
+                                                </span>
+                                            )}
+                                            {!client.twilio_phone_number && !client.client_whatsapp_number && (
+                                                <span className="text-muted-foreground/50 italic text-xs">Not Configured</span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">

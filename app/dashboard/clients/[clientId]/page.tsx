@@ -25,7 +25,7 @@ export default async function ClientPage({ params }: { params: Promise<{ clientI
     // 2. Fetch Funnels
     const { data: funnels } = await supabase
         .from('funnels')
-        .select('*, client:clients(id, slug), template:templates(id, name)')
+        .select('*, client:clients(id, slug), template:funnel_templates(id, name)')
         .eq('client_id', clientId)
         .order('created_at', { ascending: false })
 
